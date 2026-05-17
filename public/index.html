@@ -3,16 +3,259 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>CYBER SWARM</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; }
-    canvas { display: block; }
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: monospace;
+      color: #fff;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #join-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    #join-btn {
+      padding: 30px 50px;
+      font-size: 24px;
+      font-family: monospace;
+      font-weight: bold;
+      background: #00ff88;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      /* 确保可点击 */
+      position: relative;
+      z-index: 100;
+    }
+
+    #join-label {
+      color: #00ff88;
+      font-size: 14px;
+      letter-spacing: 2px;
+    }
+
+    #game-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      gap: 16px;
+    }
+
+    #role-label {
+      font-size: 13px;
+      letter-spacing: 3px;
+      opacity: 0.6;
+    }
+
+    #role-name {
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    #role-instruction {
+      font-size: 16px;
+      opacity: 0.7;
+      letter-spacing: 1px;
+    }
+
+    #intensity-val {
+      font-size: 13px;
+      opacity: 0.4;
+      margin-top: 8px;
+    }
+
+    #bar-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      transition: height 0.05s;
+      opacity: 0.3;
+    }
+
+    #waiting-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #waiting-screen p {
+      color: #00cc66;
+      font-size: 16px;
+      letter-spacing: 2px;
+    }
+
+    #waiting-screen small {
+      color: #006633;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+  <!-- 加入按钮 -->
+  <div id="join-screen">
+    <div id="join-label">CYBER SWARM</div>
+    <button id="join-btn">JOIN THE BAND</button>
+  </div>
+
+  <!-- 等待分配角色 -->
+  <div id="waiting-screen">
+    <p>CONNECTED</p>
+    <small>WAITING FOR HOST...</small>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div id="game-screen">
+    <div id="bar-container"></div>
+    <div id="role-label">YOUR ROLE</div>
+    <div id="role-name">--</div>
+    <div id="role-instruction">SHAKE IT</div>
+    <div id="intensity-val">0</div>
+  </div>
+
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <script src="sketch.js"></script>
+  <script>
+    // ===== 配置 =====
+    const ROLE_NAMES = ["01_PULSE","02_RIFT","03_VOID","04_GLITCH","05_SURGE"];
+    const ROLE_COLORS = [
+      "#00ffb4",  // PULSE 青绿
+      "#ff6400",  // RIFT  橙
+      "#5000ff",  // VOID  深紫
+      "#ff0050",  // GLITCH 红粉
+      "#ffdc00",  // SURGE 金黄
+    ];
+    const ROLE_INSTRUCTIONS = [
+      "SHAKE TO THE BEAT",
+      "SHAKE FOR MELODY",
+      "SHAKE FOR BASS",
+      "SHAKE TO GLITCH",
+      "SHAKE FOR SURGE",
+    ];
+
+    // ===== 状态 =====
+    let myDeviceId = Math.floor(Math.random() * 1000000);
+    let myRole = -1;
+    let smoothedShake = 0;
+    let isConnected = false;
+
+    // ===== Socket =====
+    const socket = io("/");
+
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+    });
+
+    socket.on('shake', (data) => {
+      // 接收主机分配的角色
+      if (data.isHost && data.targetId === myDeviceId) {
+        myRole = data.role;
+        applyRole(myRole);
+      }
+    });
+
+    // ===== UI切换 =====
+    function applyRole(role) {
+      document.getElementById('waiting-screen').style.display = 'none';
+      document.getElementById('game-screen').style.display = 'flex';
+
+      let c = ROLE_COLORS[role] || '#ffffff';
+      document.getElementById('role-name').innerText = ROLE_NAMES[role] || '--';
+      document.getElementById('role-name').style.color = c;
+      document.getElementById('role-instruction').innerText = ROLE_INSTRUCTIONS[role] || 'SHAKE';
+      document.getElementById('role-instruction').style.color = c;
+      document.getElementById('role-label').style.color = c;
+      document.getElementById('bar-container').style.background = c;
+      document.body.style.background = '#000';
+    }
+
+    // ===== JOIN按钮 =====
+    document.getElementById('join-btn').addEventListener('click', function() {
+      // iOS 13+陀螺仪权限
+      if (typeof DeviceMotionEvent !== 'undefined' &&
+          typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission()
+          .then(state => {
+            if (state === 'granted') startSensors();
+            else alert('需要允许动作权限才能参与');
+          })
+          .catch(err => {
+            console.error(err);
+            startSensors(); // 失败也继续
+          });
+      } else {
+        // Android或桌面
+        startSensors();
+      }
+    });
+
+    function startSensors() {
+      document.getElementById('join-screen').style.display = 'none';
+      document.getElementById('waiting-screen').style.display = 'flex';
+      isConnected = true;
+      startSendLoop();
+    }
+
+    // ===== 传感器读取 =====
+    let accX = 0, accY = 0, accZ = 0;
+
+    window.addEventListener('devicemotion', (e) => {
+      if (e.accelerationIncludingGravity) {
+        accX = e.accelerationIncludingGravity.x || 0;
+        accY = e.accelerationIncludingGravity.y || 0;
+        accZ = e.accelerationIncludingGravity.z || 0;
+      }
+    });
+
+    // ===== 发送循环（每30ms发一次，约33fps）=====
+    function startSendLoop() {
+      setInterval(() => {
+        if (!isConnected) return;
+
+        let rawShake = Math.abs(accX) + Math.abs(accY) + Math.abs(accZ);
+        smoothedShake = smoothedShake * 0.75 + rawShake * 0.25;
+        let val = Math.min(smoothedShake, 180);
+
+        // 发送给电脑端
+        socket.emit('shake', { id: myDeviceId, val: val });
+
+        // 更新UI
+        if (myRole >= 0) {
+          let pct = (val / 180) * 100;
+          document.getElementById('bar-container').style.height = pct + '%';
+          document.getElementById('intensity-val').innerText = Math.round(val);
+
+          // 背景随强度变深
+          let bg = Math.round(val / 180 * 30);
+          let c = ROLE_COLORS[myRole] || '#ffffff';
+          // 简单的暗色背景
+          document.body.style.background = `rgb(${bg},${bg},${bg})`;
+        }
+      }, 30);
+    }
+  </script>
 </body>
 </html>

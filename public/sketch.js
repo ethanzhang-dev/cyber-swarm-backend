@@ -31,34 +31,54 @@ function setup() {
   myDeviceId = Math.floor(Math.random() * 1000000);
   textFont('monospace');
 
-  // JOIN按钮
-  let btn = createButton('JOIN THE BAND');
-  btn.style('padding', '28px 40px');
-  btn.style('font-size', '20px');
-  btn.style('font-family', 'monospace');
-  btn.style('background', '#00ff88');
-  btn.style('color', '#000');
-  btn.style('border', 'none');
-  btn.style('border-radius', '4px');
-  btn.style('font-weight', 'bold');
-  btn.position(width/2 - 120, height/2 - 35);
+  // 用原生HTML按钮，不用p5.js的createButton
+  // 原因：iOS要求陀螺仪权限必须在原生用户手势事件里同步触发
+  // p5.js的mousePressed有时被浏览器认为不是直接手势，会被拦截
+  let btn = document.createElement('button');
+  btn.innerText = 'JOIN THE BAND';
+  btn.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 28px 40px;
+    font-size: 22px;
+    font-family: monospace;
+    font-weight: bold;
+    background: #00ff88;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    z-index: 9999;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  `;
 
-  btn.mousePressed(() => {
+  btn.addEventListener('click', () => {
     userStartAudio();
-    // iOS陀螺仪权限请求
+    // iOS 13+陀螺仪权限：必须在原生click事件里同步调用
     if (typeof DeviceMotionEvent !== 'undefined' &&
         typeof DeviceMotionEvent.requestPermission === 'function') {
       DeviceMotionEvent.requestPermission()
-        .then(state => { if (state === 'granted') isConnected = true; })
-        .catch(console.error);
+        .then(state => {
+          if (state === 'granted') isConnected = true;
+        })
+        .catch(e => {
+          console.error(e);
+          isConnected = true; // 权限失败也让它继续，只是没有传感器数据
+        });
     } else {
+      // Android或不需要权限的设备
       isConnected = true;
     }
-    btn.hide();
+    btn.remove();
   });
 
+  document.body.appendChild(btn);
+
   // 连接后端
-socket = io("/"); // 直接连当前服务器，不用写死URL
+  socket = io("https://cyber-swarm-backend.onrender.com");
 
   // 接收主机分配的角色
   socket.on('shake', (data) => {

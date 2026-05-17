@@ -27,7 +27,10 @@ const roleInstructions = [
 ];
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  let cnv = createCanvas(windowWidth, windowHeight);
+  // 把canvas放到最底层，不遮挡HTML按钮
+  cnv.style('z-index', '0');
+  cnv.style('position', 'fixed');
   myDeviceId = Math.floor(Math.random() * 1000000);
   textFont('monospace');
 

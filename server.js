@@ -4,7 +4,9 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 // 创建基础服务器
+const path = require('path');
 const app = express();
+app.use(express.static(path.join(__dirname, 'public')));
 const server = http.createServer(app);
 
 // 初始化 Socket.io，并配置跨域 (CORS)

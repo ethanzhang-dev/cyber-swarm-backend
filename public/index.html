@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>CYBER SWARM</title>
+  <title>SWARM</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -40,7 +40,7 @@
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
-      /* 确保可点击 */
+      /* make sure the button is tappable */
       position: relative;
       z-index: 100;
     }
@@ -116,19 +116,19 @@
 </head>
 <body>
 
-  <!-- 加入按钮 -->
+  <!-- join screen -->
   <div id="join-screen">
-    <div id="join-label">CYBER SWARM</div>
-    <button id="join-btn">JOIN THE BAND</button>
+    <div id="join-label">SWARM</div>
+    <button id="join-btn">ENTER THE SWARM</button>
   </div>
 
-  <!-- 等待分配角色 -->
+  <!-- waiting for role assignment -->
   <div id="waiting-screen">
-    <p>CONNECTED</p>
-    <small>WAITING FOR HOST...</small>
+    <p>YOU ARE IN</p>
+    <small>STAND BY FOR YOUR ROLE</small>
   </div>
 
-  <!-- 游戏界面 -->
+  <!-- game screen -->
   <div id="game-screen">
     <div id="bar-container"></div>
     <div id="role-label">YOUR ROLE</div>
@@ -139,24 +139,24 @@
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
-    // ===== 配置 =====
-    const ROLE_NAMES = ["01_PULSE","02_RIFT","03_VOID","04_GLITCH","05_SURGE"];
+    // config
+    const ROLE_NAMES = ["01 PULSE","02 RIFT","03 VOID","04 GLITCH","05 SURGE"];
     const ROLE_COLORS = [
-      "#00ffb4",  // PULSE 青绿
-      "#ff6400",  // RIFT  橙
-      "#5000ff",  // VOID  深紫
-      "#ff0050",  // GLITCH 红粉
-      "#ffdc00",  // SURGE 金黄
+      "#00ffb4",
+      "#ff6400",
+      "#5000ff",
+      "#ff0050",
+      "#ffdc00",
     ];
     const ROLE_INSTRUCTIONS = [
-      "SHAKE TO THE BEAT",
-      "SHAKE FOR MELODY",
-      "SHAKE FOR BASS",
-      "SHAKE TO GLITCH",
-      "SHAKE FOR SURGE",
+      "YOU ARE THE BEAT",
+      "YOU ARE THE SOUND",
+      "YOU ARE THE DARK",
+      "YOU ARE THE BREAK",
+      "YOU ARE THE SURGE",
     ];
 
-    // ===== 状态 =====
+    // state
     let myDeviceId = Math.floor(Math.random() * 1000000);
     let myRole = -1;
     let smoothedShake = 0;
@@ -170,14 +170,14 @@
     });
 
     socket.on('shake', (data) => {
-      // 接收主机分配的角色
+      // receive role assignment from the host
       if (data.isHost && data.targetId === myDeviceId) {
         myRole = data.role;
         applyRole(myRole);
       }
     });
 
-    // ===== UI切换 =====
+    // switch to game screen and apply role
     function applyRole(role) {
       document.getElementById('waiting-screen').style.display = 'none';
       document.getElementById('game-screen').style.display = 'flex';
@@ -192,22 +192,22 @@
       document.body.style.background = '#000';
     }
 
-    // ===== JOIN按钮 =====
+    // join button handler
     document.getElementById('join-btn').addEventListener('click', function() {
-      // iOS 13+陀螺仪权限
+      // iOS 13+ requires explicit permission for motion sensors
       if (typeof DeviceMotionEvent !== 'undefined' &&
           typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceMotionEvent.requestPermission()
           .then(state => {
             if (state === 'granted') startSensors();
-            else alert('需要允许动作权限才能参与');
+            else alert('Please allow motion access to participate.');
           })
           .catch(err => {
             console.error(err);
-            startSensors(); // 失败也继续
+            startSensors(); // continue even if permission fails
           });
       } else {
-        // Android或桌面
+        // Android or desktop — no permission needed
         startSensors();
       }
     });
@@ -219,7 +219,7 @@
       startSendLoop();
     }
 
-    // ===== 传感器读取 =====
+    // read motion sensor data
     let accX = 0, accY = 0, accZ = 0;
 
     window.addEventListener('devicemotion', (e) => {
@@ -230,7 +230,7 @@
       }
     });
 
-    // ===== 发送循环（每30ms发一次，约33fps）=====
+    // send loop — fires every 30ms (~33fps)
     function startSendLoop() {
       setInterval(() => {
         if (!isConnected) return;
@@ -239,19 +239,19 @@
         smoothedShake = smoothedShake * 0.75 + rawShake * 0.25;
         let val = Math.min(smoothedShake, 180);
 
-        // 发送给电脑端
+        // send to the host computer
         socket.emit('shake', { id: myDeviceId, val: val });
 
-        // 更新UI
+        // update UI
         if (myRole >= 0) {
           let pct = (val / 180) * 100;
           document.getElementById('bar-container').style.height = pct + '%';
           document.getElementById('intensity-val').innerText = Math.round(val);
 
-          // 背景随强度变深
+          // background darkens with intensity
           let bg = Math.round(val / 180 * 30);
           let c = ROLE_COLORS[myRole] || '#ffffff';
-          // 简单的暗色背景
+          // simple dark background when no role assigned yet
           document.body.style.background = `rgb(${bg},${bg},${bg})`;
         }
       }, 30);

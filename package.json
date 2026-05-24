@@ -1,7 +1,7 @@
 {
-  "name": "cyber-swarm-server",
+  "name": "swarm-server",
   "version": "1.0.0",
-  "description": "Socket.io 中转服务器",
+  "description": "Socket.io relay server for SWARM live performance system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
